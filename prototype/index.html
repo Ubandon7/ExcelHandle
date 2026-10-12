@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>表格轻舟 · Excel 处理工作台</title>
+  <style>
+    :root {
+      --primary: #147d64;
+      --primary-dark: #0f6853;
+      --primary-soft: #eaf6f1;
+      --primary-line: #acd9ca;
+      --bg: #f5f7f8;
+      --surface: #ffffff;
+      --surface-soft: #fafcfb;
+      --ink: #17201d;
+      --muted: #66736e;
+      --faint: #8c9893;
+      --line: #e2e8e5;
+      --line-strong: #d3dcd8;
+      --warning: #a96510;
+      --warning-soft: #fff6e8;
+      --danger: #bf4740;
+      --shadow: 0 14px 34px rgba(30, 55, 47, .08);
+      --radius: 14px;
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 1024px; background: var(--bg); }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+
+    .app { min-height: 100vh; display: grid; grid-template-columns: 216px 1fr; }
+
+    .sidebar {
+      position: sticky; top: 0; height: 100vh; padding: 22px 16px 18px;
+      background: var(--surface); border-right: 1px solid var(--line);
+      display: flex; flex-direction: column; z-index: 5;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 22px; }
+    .brand-mark {
+      width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+      background: linear-gradient(145deg, #1b9477, #116b57); color: white;
+      box-shadow: 0 8px 18px rgba(20, 125, 100, .22);
+    }
+    .brand-mark svg { width: 19px; height: 19px; }
+    .brand-name { font-size: 16px; font-weight: 760; letter-spacing: -.2px; }
+    .brand-sub { margin-top: 2px; color: var(--faint); font-size: 10px; letter-spacing: .6px; }
+
+    .file-chip {
+      margin: 0 2px 18px; padding: 12px; border: 1px solid var(--line); border-radius: 12px;
+      background: var(--surface-soft);
+    }
+    .file-top { display: flex; gap: 9px; align-items: center; }
+    .file-icon { width: 30px; height: 34px; border-radius: 7px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); font-weight: 750; font-size: 11px; }
+    .file-meta { min-width: 0; flex: 1; }
+    .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 650; }
+    .file-state { margin-top: 4px; color: var(--muted); font-size: 10px; }
+    .file-state b { color: var(--primary); font-weight: 650; }
+
+    .nav-label { padding: 8px 10px; color: var(--faint); font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+    .nav { display: grid; gap: 5px; }
+    .nav-btn {
+      width: 100%; border: 0; background: transparent; color: #52605b; padding: 10px 11px;
+      display: flex; align-items: center; gap: 11px; border-radius: 10px; text-align: left; font-size: 13px;
+    }
+    .nav-btn svg { width: 18px; height: 18px; stroke-width: 1.8; }
+    .nav-btn:hover { background: #f4f8f6; color: var(--ink); }
+    .nav-btn.active { background: var(--primary-soft); color: var(--primary-dark); font-weight: 680; }
+    .nav-badge { margin-left: auto; min-width: 20px; padding: 2px 6px; border-radius: 20px; background: #dff0ea; text-align: center; font-size: 10px; }
+
+    .side-foot { margin-top: auto; padding: 12px 10px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.6; }
+    .side-foot strong { display: block; color: #45534e; font-size: 11px; margin-bottom: 2px; }
+
+    .main { min-width: 0; }
+    .topbar {
+      height: 64px; padding: 0 28px; background: rgba(255,255,255,.94); border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 4;
+      backdrop-filter: blur(10px);
+    }
+    .crumb { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+    .crumb strong { color: var(--ink); font-weight: 650; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .saved { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+    .saved::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #50a88f; }
+    .avatar { width: 30px; height: 30px; border-radius: 50%; background: #263a34; color: white; display: grid; place-items: center; font-size: 11px; }
+
+    .page { padding: 26px 28px 34px; max-width: 1580px; margin: 0 auto; }
+    .page-view { display: none; }
+    .page-view.active { display: block; animation: appear .18s ease-out; }
+    @keyframes appear { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+
+    .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 20px; }
+    h1 { margin: 0; font-size: 24px; line-height: 1.25; letter-spacing: -.55px; }
+    .subtitle { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
+    .button-row { display: flex; gap: 9px; }
+    .btn {
+      height: 38px; border: 1px solid var(--line-strong); border-radius: 10px; padding: 0 15px;
+      background: var(--surface); color: #34423d; font-size: 12px; font-weight: 650; display: inline-flex; align-items: center; gap: 7px;
+    }
+    .btn:hover { border-color: #aebdb7; background: #fbfdfc; }
+    .btn.primary { border-color: var(--primary); background: var(--primary); color: white; box-shadow: 0 7px 16px rgba(20,125,100,.18); }
+    .btn.primary:hover { background: var(--primary-dark); }
+    .btn.ghost { border-color: transparent; background: transparent; color: var(--primary); padding: 0 9px; }
+    .btn.small { height: 32px; padding: 0 10px; border-radius: 8px; font-size: 11px; }
+    .btn svg { width: 15px; height: 15px; }
+
+    .file-strip {
+      display: flex; align-items: center; gap: 18px; padding: 12px 16px; margin-bottom: 16px;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    }
+    .strip-file { display: flex; align-items: center; gap: 9px; min-width: 230px; }
+    .dot-icon { width: 28px; height: 28px; border-radius: 8px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+    .strip-name { font-size: 12px; font-weight: 680; }
+    .strip-note { color: var(--faint); font-size: 10px; margin-top: 2px; }
+    .metrics { display: flex; align-items: center; gap: 0; margin-left: auto; }
+    .metric { min-width: 92px; padding: 0 18px; border-left: 1px solid var(--line); }
+    .metric strong { display: block; font-size: 14px; font-weight: 740; }
+    .metric span { color: var(--faint); font-size: 10px; }
+
+    .work-grid { display: grid; grid-template-columns: 282px minmax(580px, 1fr); gap: 16px; align-items: start; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 1px 1px rgba(25,45,39,.015); }
+    .panel-head { height: 58px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+    .panel-title { font-size: 13px; font-weight: 720; }
+    .panel-note { margin-top: 3px; color: var(--faint); font-size: 10px; font-weight: 500; }
+
+    .group-list { padding: 10px; display: grid; gap: 7px; }
+    .group-card {
+      position: relative; padding: 11px 10px 11px 12px; border: 1px solid transparent; border-radius: 10px;
+      display: grid; grid-template-columns: 22px 1fr auto; gap: 9px; align-items: center; cursor: pointer;
+    }
+    .group-card:hover { background: #f7faf8; }
+    .group-card.active { background: var(--primary-soft); border-color: #cee8de; }
+    .priority { color: var(--faint); font-size: 10px; font-weight: 700; text-align: center; }
+    .group-card.active .priority { color: var(--primary); }
+    .group-main { min-width: 0; }
+    .group-name { font-size: 12px; font-weight: 680; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .group-desc { margin-top: 4px; color: var(--faint); font-size: 10px; }
+    .group-count { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .system-group { margin-top: 3px; border-top: 1px solid var(--line); padding-top: 10px; }
+    .system-tag { padding: 2px 6px; border-radius: 5px; background: #eef1f0; color: var(--muted); font-size: 9px; }
+
+    .builder { min-height: 399px; }
+    .builder-body { padding: 18px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 220px; gap: 14px; margin-bottom: 16px; }
+    .field label { display: block; margin-bottom: 6px; color: #53615c; font-size: 10px; font-weight: 680; }
+    .control {
+      width: 100%; height: 38px; border: 1px solid var(--line-strong); border-radius: 9px; background: white;
+      padding: 0 11px; color: var(--ink); font-size: 12px; outline: none;
+    }
+    .control:focus { border-color: #69ae99; box-shadow: 0 0 0 3px rgba(20,125,100,.09); }
+
+    .tree {
+      border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); padding: 12px;
+    }
+    .tree-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .tree-label { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 680; }
+    .relation { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: white; }
+    .relation button { border: 0; border-radius: 6px; background: transparent; color: var(--muted); padding: 4px 9px; font-size: 9px; font-weight: 750; }
+    .relation button.active { background: var(--primary); color: white; }
+    .tree-actions { display: flex; gap: 4px; }
+    .link-btn { border: 0; background: transparent; color: var(--primary); padding: 5px 7px; font-size: 10px; font-weight: 650; border-radius: 6px; }
+    .link-btn:hover { background: var(--primary-soft); }
+
+    .condition { display: grid; grid-template-columns: minmax(130px,1fr) minmax(115px,.75fr) minmax(150px,1.25fr) 28px; gap: 8px; margin: 7px 0; align-items: center; }
+    .mini-control { height: 34px; border: 1px solid var(--line); border-radius: 8px; background: white; padding: 0 9px; min-width: 0; color: #34423d; font-size: 10px; outline: 0; }
+    .icon-btn { width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: #9aa59f; display: grid; place-items: center; }
+    .icon-btn:hover { background: #f0f3f2; color: var(--danger); }
+    .icon-btn svg { width: 14px; height: 14px; }
+
+    .subtree { margin: 10px 0 2px 22px; padding: 10px 10px 8px 12px; border-left: 2px solid var(--primary-line); border-radius: 0 9px 9px 0; background: #f2f8f5; }
+    .summary-line { display: flex; align-items: center; gap: 7px; margin-top: 12px; color: var(--muted); font-size: 10px; }
+    .summary-line svg { color: var(--primary); width: 14px; height: 14px; }
+
+    .preview { grid-column: 1 / -1; overflow: hidden; }
+    .preview-top { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px 0; }
+    .tabs { display: flex; gap: 2px; align-items: flex-end; overflow-x: auto; }
+    .sheet-tab { border: 0; border-bottom: 2px solid transparent; background: transparent; padding: 9px 12px 10px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .sheet-tab.active { color: var(--primary-dark); border-bottom-color: var(--primary); font-weight: 700; }
+    .sheet-tab.system { color: #717c78; }
+    .preview-meta { color: var(--faint); font-size: 10px; white-space: nowrap; }
+
+    .table-wrap { overflow: auto; border-top: 1px solid var(--line); }
+    table { width: 100%; border-collapse: collapse; min-width: 930px; font-size: 10px; }
+    th { height: 36px; padding: 0 12px; background: #f8faf9; color: #65716d; text-align: left; font-weight: 680; white-space: nowrap; border-bottom: 1px solid var(--line); }
+    td { height: 37px; padding: 0 12px; color: #34413d; white-space: nowrap; border-bottom: 1px solid #edf1ef; }
+    tbody tr:hover td { background: #fbfdfc; }
+    .source-cell { color: var(--primary-dark); font-weight: 650; }
+    .money { text-align: right; font-variant-numeric: tabular-nums; }
+    .status-dot { display: inline-flex; align-items: center; gap: 5px; }
+    .status-dot::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #51a68f; }
+    .pager { height: 45px; padding: 0 14px; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 10px; }
+    .pages { display: flex; gap: 4px; }
+    .page-btn { min-width: 27px; height: 27px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--muted); font-size: 10px; }
+    .page-btn.active { border-color: var(--primary); background: var(--primary); color: white; }
+
+    .upload-card { min-height: 480px; display: grid; place-items: center; padding: 40px; }
+    .drop-zone { width: min(650px, 90%); min-height: 260px; border: 1.5px dashed #b9cbc4; border-radius: 18px; background: linear-gradient(180deg,#fff,#f8fbfa); display: grid; place-items: center; text-align: center; padding: 34px; }
+    .upload-icon { width: 50px; height: 50px; margin: 0 auto 14px; border-radius: 14px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); }
+    .upload-icon svg { width: 23px; height: 23px; }
+    .drop-zone h2 { margin: 0 0 7px; font-size: 17px; }
+    .drop-zone p { margin: 0 0 18px; color: var(--muted); font-size: 11px; line-height: 1.7; }
+    .formats { margin-top: 16px; color: var(--faint); font-size: 9px; }
+
+    .sum-grid { display: grid; grid-template-columns: minmax(420px,.9fr) minmax(500px,1.1fr); gap: 16px; }
+    .sum-config { padding: 20px; }
+    .mode-title { margin-bottom: 10px; font-size: 11px; font-weight: 680; color: #53615c; }
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .mode-card { border: 1px solid var(--line); border-radius: 11px; padding: 13px; background: white; text-align: left; color: var(--ink); }
+    .mode-card.active { border-color: #88c2af; background: var(--primary-soft); box-shadow: inset 0 0 0 1px #c9e8dd; }
+    .mode-card strong { display: block; font-size: 12px; }
+    .mode-card span { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+    .rule-box { margin-top: 16px; padding: 13px; border-radius: 10px; background: #f7f9f8; color: #53615c; font-size: 10px; line-height: 1.8; }
+    .rule-box strong { color: var(--ink); }
+    .sum-result { overflow: hidden; }
+    .sum-total { padding: 19px 18px 16px; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid var(--line); }
+    .sum-total span { color: var(--muted); font-size: 10px; }
+    .sum-total strong { display: block; margin-top: 5px; font-size: 24px; letter-spacing: -.4px; }
+    .sum-note { padding: 5px 8px; border-radius: 7px; color: var(--warning); background: var(--warning-soft); font-size: 9px; }
+
+    .toast { position: fixed; right: 24px; bottom: 24px; padding: 12px 15px; border-radius: 11px; background: #20332d; color: white; box-shadow: var(--shadow); font-size: 11px; opacity: 0; transform: translateY(12px); pointer-events: none; transition: .2s ease; z-index: 20; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 1180px) {
+      .app { grid-template-columns: 76px 1fr; }
+      .sidebar { padding-inline: 12px; }
+      .brand { justify-content: center; padding-inline: 0; }
+      .brand-copy, .file-chip, .nav-label, .nav-btn span, .nav-badge, .side-foot { display: none; }
+      .nav-btn { justify-content: center; padding: 11px; }
+      .work-grid { grid-template-columns: 1fr; }
+      .preview { grid-column: 1; }
+      .group-list { grid-template-columns: repeat(4, minmax(150px, 1fr)); overflow-x: auto; }
+      .system-group { margin-top: 0; padding-top: 0; border-top: 0; }
+      .sum-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 8h16M9 8v13M9 13h11M9 17h11"/></svg>
+        </div>
+        <div class="brand-copy"><div class="brand-name">表格轻舟</div><div class="brand-sub">EXCEL WORKSPACE</div></div>
+      </div>
+
+      <div class="file-chip">
+        <div class="file-top">
+          <div class="file-icon">XLSX</div>
+          <div class="file-meta">
+            <div class="file-name">原始全部数据.xlsx</div>
+            <div class="file-state"><b>解析完成</b> · 911 KB</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-label">工作台</div>
+      <nav class="nav">
+        <button class="nav-btn" data-page="file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h6L20 10.5V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M12 3v8h8"/></svg>
+          <span>文件概览</span>
+        </button>
+        <button class="nav-btn active" data-page="filter">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16M7 12h10M10 19h4"/></svg>
+          <span>筛选处理</span><span class="nav-badge">4</span>
+        </button>
+        <button class="nav-btn" data-page="sum">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 4h12M7 12h12M7 20h12"/><path d="M3.5 4h.01M3.5 12h.01M3.5 20h.01"/></svg>
+          <span>跨表求和</span>
+        </button>
+      </nav>
+
+      <div class="side-foot"><strong>隐私保护</strong>文件与结果将在最后访问 24 小时后自动清理。</div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="crumb"><span>Excel 工作台</span><span>/</span><strong id="crumb-title">筛选处理</strong></div>
+        <div class="top-actions"><span class="saved">所有更改已保存</span><div class="avatar">LY</div></div>
+      </header>
+
+      <div class="page">
+        <section id="page-filter" class="page-view active">
+          <div class="page-head">
+            <div><h1>筛选与结果分组</h1><p class="subtitle">按从上到下的顺序匹配，每条数据只进入第一个命中的结果 Sheet。</p></div>
+            <div class="button-row">
+              <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16v16H4zM8 4v6h8V4M8 20v-6h8v6"/></svg>保存方案</button>
+              <button class="btn primary run-filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m8 5 11 7-11 7z"/></svg>开始筛选</button>
+            </div>
+          </div>
+
+          <div class="file-strip">
+            <div class="strip-file"><div class="dot-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 3h10l4 4v14H5zM14 3v5h5"/></svg></div><div><div class="strip-name">原始全部数据.xlsx</div><div class="strip-note">读取范围已校验 · A1:U6992</div></div></div>
+            <div class="metrics"><div class="metric"><strong>1</strong><span>源 Sheet</span></div><div class="metric"><strong>6,991</strong><span>数据行</span></div><div class="metric"><strong>21</strong><span>数据列</span></div><div class="metric"><strong>4</strong><span>结果 Sheet</span></div></div>
+          </div>
+
+          <div class="work-grid">
+            <section class="card groups-panel">
+              <div class="panel-head"><div><div class="panel-title">结果 Sheet</div><div class="panel-note">从上到下 · 首次命中</div></div><button id="add-group" class="btn ghost small">＋ 新建</button></div>
+              <div class="group-list" id="group-list">
+                <div class="group-card active" data-group="美式"><div class="priority">01</div><div class="group-main"><div class="group-name">美式</div><div class="group-desc">全部 Sheet · 4 条件</div></div><div class="group-count">2,087</div></div>
+                <div class="group-card" data-group="XJ-前缀"><div class="priority">02</div><div class="group-main"><div class="group-name">XJ-前缀</div><div class="group-desc">全部 Sheet · 2 条件</div></div><div class="group-count">791</div></div>
+                <div class="group-card" data-group="teacher"><div class="priority">03</div><div class="group-main"><div class="group-name">teacher</div><div class="group-desc">账号导出 · 1 条件</div></div><div class="group-count">1,037</div></div>
+                <div class="group-card system-group" data-group="未匹配"><div class="priority">—</div><div class="group-main"><div class="group-name">未匹配 <span class="system-tag">系统</span></div><div class="group-desc">固定在最后 · 不可编辑</div></div><div class="group-count">3,076</div></div>
+              </div>
+            </section>
+
+            <section class="card builder">
+              <div class="panel-head"><div><div class="panel-title">条件树</div><div class="panel-note">正在编辑：<span id="editing-name">美式</span></div></div><div class="button-row"><button class="btn small">↑ 上移</button><button class="btn small">↓ 下移</button></div></div>
+              <div class="builder-body">
+                <div class="form-grid">
+                  <div class="field"><label>结果 Sheet 名</label><input id="sheet-name" class="control" value="美式" /></div>
+                  <div class="field"><label>处理范围</label><select class="control"><option>全部 Sheet</option><option>账号导出</option></select></div>
+                </div>
+                <div class="tree">
+                  <div class="tree-head">
+                    <div class="tree-label"><span>满足以下</span><div class="relation"><button class="active">AND</button><button>OR</button></div></div>
+                    <div class="tree-actions"><button class="link-btn">＋ 条件</button><button class="link-btn">＋ 条件组</button></div>
+                  </div>
+                  <div class="condition">
+                    <select class="mini-control"><option>录入备注 · 1/1 Sheet</option><option>供应商</option><option>账号 Email</option></select>
+                    <select class="mini-control"><option>包含</option><option>以前缀开头</option><option>不包含</option></select>
+                    <input class="mini-control" value="gmail" />
+                    <button class="icon-btn" aria-label="删除条件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 7h14M9 7V4h6v3M8 7l1 13h6l1-13"/></svg></button>
+                  </div>
+                  <div class="subtree">
+                    <div class="tree-head">
+                      <div class="tree-label"><span>其中任意</span><div class="relation"><button>AND</button><button class="active">OR</button></div></div>
+                      <div class="tree-actions"><button class="link-btn">＋ 条件</button></div>
+                    </div>
+                    <div class="condition"><select class="mini-control"><option>供应商</option></select><select class="mini-control"><option>属于</option></select><input class="mini-control" value="平台自有, ning" /><button class="icon-btn" aria-label="删除条件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 7h14M9 7V4h6v3M8 7l1 13h6l1-13"/></svg></button></div>
+                    <div class="condition"><select class="mini-control"><option>账号 Email</option></select><select class="mini-control"><option>以后缀结尾</option></select><input class="mini-control" value="@outlook.com" /><button class="icon-btn" aria-label="删除条件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 7h14M9 7V4h6v3M8 7l1 13h6l1-13"/></svg></button></div>
+                  </div>
+                  <div class="summary-line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>录入备注包含“gmail”，并且供应商属于指定集合或账号邮箱以 @outlook.com 结尾。</span></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card preview">
+              <div class="preview-top"><div class="tabs"><button class="sheet-tab active">美式</button><button class="sheet-tab">XJ-前缀</button><button class="sheet-tab">teacher</button><button class="sheet-tab system">未匹配</button></div><div class="preview-meta"><span id="preview-count">2,087</span> 行 · 最近运行 09:42</div></div>
+              <div class="table-wrap">
+                <table><thead><tr><th>来源 Sheet</th><th>供应商</th><th>账号 Email</th><th>录入备注</th><th>请求数</th><th>消费金额 ($)</th><th>统计状态</th></tr></thead>
+                  <tbody>
+                    <tr><td class="source-cell">账号导出</td><td>平台自有</td><td>alifka.s@outlook.com</td><td>ning-1021</td><td>3,766</td><td class="money">193.961855</td><td><span class="status-dot">成功</span></td></tr>
+                    <tr><td class="source-cell">账号导出</td><td>平台自有</td><td>mt893511@gmail.com</td><td>gouge-0825-01</td><td>33,667</td><td class="money">6,474.765684</td><td><span class="status-dot">成功</span></td></tr>
+                    <tr><td class="source-cell">账号导出</td><td>千落</td><td>joanmcdonald907@gmail.com</td><td>Allen-Euphoria-0828-01</td><td>5,650</td><td class="money">329.079178</td><td><span class="status-dot">成功</span></td></tr>
+                    <tr><td class="source-cell">账号导出</td><td>ning</td><td>altillomusica.oficial@gmail.com</td><td>1</td><td>758</td><td class="money">50.572409</td><td><span class="status-dot">成功</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="pager"><span>第 1–100 行，共 <span id="pager-count">2,087</span> 行</span><div class="pages"><button class="page-btn">‹</button><button class="page-btn active">1</button><button class="page-btn">2</button><button class="page-btn">3</button><button class="page-btn">›</button></div></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="page-file" class="page-view">
+          <div class="page-head"><div><h1>文件概览</h1><p class="subtitle">上传、检查并预览工作簿结构。</p></div><button class="btn primary">替换文件</button></div>
+          <section class="card upload-card"><div class="drop-zone"><div><div class="upload-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 16V4M7 9l5-5 5 5M5 14v5h14v-5"/></svg></div><h2>拖入 Excel 文件</h2><p>系统会自动识别全部 Sheet、表头和实际数据范围。<br>源文件仅用于当前处理任务，不会被修改。</p><button class="btn primary">选择文件</button><div class="formats">XLSX · XLS · XLSM · XLSB · XLTX · XLTM · XLT · XML · CSV · TSV</div></div></div></section>
+        </section>
+
+        <section id="page-sum" class="page-view">
+          <div class="page-head"><div><h1>跨 Sheet 求和</h1><p class="subtitle">选择同一列的匹配方式，逐 Sheet 计算并保留异常原值。</p></div><div class="button-row"><button class="btn">查看异常明细</button><button class="btn primary run-sum">开始求和</button></div></div>
+          <div class="file-strip"><div class="strip-file"><div class="dot-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 3h10l4 4v14H5zM14 3v5h5"/></svg></div><div><div class="strip-name">原始全部数据.xlsx</div><div class="strip-note">1 个 Sheet · 6,991 行</div></div></div><div class="metrics"><div class="metric"><strong>2</strong><span>匹配方式</span></div><div class="metric"><strong>1</strong><span>目标列</span></div><div class="metric"><strong>3</strong><span>异常值</span></div></div></div>
+          <div class="sum-grid">
+            <section class="card sum-config">
+              <div class="panel-title" style="margin-bottom:16px">求和设置</div>
+              <div class="mode-title">列匹配方式</div>
+              <div class="mode-grid"><button class="mode-card active"><strong>按表头名称</strong><span>在每个 Sheet 中查找同名表头</span></button><button class="mode-card"><strong>按固定列位置</strong><span>始终读取相同列字母或序号</span></button></div>
+              <div class="field"><label>目标列</label><select class="control"><option>消费金额 ($) · 1/1 Sheet</option><option>请求数 · 1/1 Sheet</option><option>总 Tokens · 1/1 Sheet</option></select></div>
+              <div class="rule-box"><strong>数值解析规则</strong><br>$1,234.50 → 1234.50　 12% → 12　 (100) → 100　 -100 → -100<br>含中文或英文字母的内容不参与求和，并在异常明细中保留原值。</div>
+              <button class="btn primary run-sum" style="width:100%;justify-content:center;margin-top:18px">开始求和</button>
+            </section>
+            <section class="card sum-result">
+              <div class="sum-total"><div><span>全部 Sheet 求和结果</span><strong>$ 18,493,762.58</strong></div><div class="sum-note">3 个值未参与</div></div>
+              <div class="table-wrap"><table style="min-width:620px"><thead><tr><th>Sheet</th><th>有效数值</th><th>空值</th><th>非数值</th><th style="text-align:right">求和结果</th></tr></thead><tbody><tr><td class="source-cell">账号导出</td><td>6,988</td><td>0</td><td style="color:var(--warning)">3 · 查看</td><td class="money">18,493,762.58</td></tr></tbody></table></div>
+              <div class="pager"><span>结果将导出为“汇总结果”和“异常明细”两个 Sheet</span><button class="btn small">下载 .xlsx</button></div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast">原型操作已完成</div>
+  <script>
+    const pageNames = { file: '文件概览', filter: '筛选处理', sum: '跨表求和' };
+    const toast = document.getElementById('toast');
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    document.querySelectorAll('.nav-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.nav-btn').forEach(item => item.classList.remove('active'));
+        document.querySelectorAll('.page-view').forEach(item => item.classList.remove('active'));
+        button.classList.add('active');
+        document.getElementById(`page-${button.dataset.page}`).classList.add('active');
+        document.getElementById('crumb-title').textContent = pageNames[button.dataset.page];
+      });
+    });
+
+    document.querySelectorAll('.relation').forEach(control => {
+      control.querySelectorAll('button').forEach(button => button.addEventListener('click', () => {
+        control.querySelectorAll('button').forEach(item => item.classList.remove('active'));
+        button.classList.add('active');
+      }));
+    });
+
+    const counts = { '美式': '2,087', 'XJ-前缀': '791', 'teacher': '1,037', '未匹配': '3,076' };
+    document.getElementById('group-list').addEventListener('click', event => {
+      const card = event.target.closest('.group-card');
+      if (!card) return;
+      document.querySelectorAll('.group-card').forEach(item => item.classList.remove('active'));
+      card.classList.add('active');
+      document.getElementById('editing-name').textContent = card.dataset.group;
+      document.getElementById('sheet-name').value = card.dataset.group;
+      document.getElementById('sheet-name').disabled = card.dataset.group === '未匹配';
+    });
+
+    document.querySelectorAll('.sheet-tab').forEach(tab => tab.addEventListener('click', () => {
+      document.querySelectorAll('.sheet-tab').forEach(item => item.classList.remove('active'));
+      tab.classList.add('active');
+      const count = counts[tab.textContent.trim()] || '0';
+      document.getElementById('preview-count').textContent = count;
+      document.getElementById('pager-count').textContent = count;
+    }));
+
+    document.querySelectorAll('.mode-card').forEach(card => card.addEventListener('click', () => {
+      document.querySelectorAll('.mode-card').forEach(item => item.classList.remove('active'));
+      card.classList.add('active');
+    }));
+
+    document.querySelectorAll('.run-filter').forEach(button => button.addEventListener('click', () => showToast('筛选任务已启动 · 首次命中模式')));
+    document.querySelectorAll('.run-sum').forEach(button => button.addEventListener('click', () => showToast('求和任务已启动 · 正在检查数值')));
+    document.getElementById('add-group').addEventListener('click', () => showToast('已创建新的结果 Sheet'));
+  </script>
+</body>
+</html>
